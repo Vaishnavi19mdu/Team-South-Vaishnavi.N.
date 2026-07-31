@@ -262,7 +262,7 @@ export const SignupBasicScreen: React.FC<SignupBasicScreenProps> = ({
                 rightIcon={<ArrowRight className="w-4 h-4" />}
                 className="px-8"
               >
-                Next: Hostel Details
+                Next:  Details
               </Button>
             </div>
 
