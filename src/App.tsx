@@ -201,7 +201,7 @@ function AppContent() {
 
         {activeRoute === 'warden-dashboard' && (
           <WardenDashboard
-            userName="Dr. Priya Raman"
+            userName="Dr.Keerthana"
             onLogout={handleLogout}
           />
         )}
