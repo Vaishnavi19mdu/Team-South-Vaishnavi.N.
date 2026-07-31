@@ -1,22 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Sparkles, 
-  X, 
-  Send, 
-  Bot, 
-  User, 
-  Wrench, 
-  Clock, 
-  Utensils, 
-  Ticket, 
-  ShieldAlert, 
-  MessageSquare, 
-  CheckCircle2, 
+import {
+  Sparkles,
+  X,
+  Send,
+  Bot,
+  User,
+  Wrench,
+  Clock,
+  Utensils,
+  Ticket,
+  ShieldAlert,
+  CheckCircle2,
   ArrowRight,
   Zap,
-  HelpCircle,
   RotateCcw
 } from 'lucide-react';
+
+import { askVaigaiAI } from '../../utils/hfChat';
 
 export interface VaigaiAiHelperModalProps {
   isOpen: boolean;
@@ -36,6 +36,25 @@ interface ChatMessage {
   suggestedAction?: { label: string; route: string };
 }
 
+// Minimal markdown: turns **bold** into real <strong> tags. Everything else
+// (including line breaks) is left to whitespace-pre-line on the wrapping <p>.
+function renderFormattedText(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+}
+
+const WELCOME_MESSAGE: ChatMessage = {
+  id: 'welcome-1',
+  sender: 'ai',
+  text: `Hello! I am **Vaigai AI**, your intelligent campus assistant. Ask me anything about complaint routing, hostel curfew, mess rebates, or visitor passes!`,
+  time: 'Just now'
+};
+
 export const VaigaiAiHelperModal: React.FC<VaigaiAiHelperModalProps> = ({
   isOpen,
   onClose,
@@ -46,14 +65,7 @@ export const VaigaiAiHelperModal: React.FC<VaigaiAiHelperModalProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome-1',
-      sender: 'ai',
-      text: `Hello! I am **Vaigai AI**, your intelligent campus assistant. Ask me anything about complaint routing, hostel curfew, mess rebates, or visitor passes!`,
-      time: 'Just now'
-    }
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -61,7 +73,7 @@ export const VaigaiAiHelperModal: React.FC<VaigaiAiHelperModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSendQuery = (textToSend?: string) => {
+  const handleSendQuery = async (textToSend?: string) => {
     const query = (textToSend || inputQuery).trim();
     if (!query) return;
 
@@ -76,85 +88,90 @@ export const VaigaiAiHelperModal: React.FC<VaigaiAiHelperModalProps> = ({
     if (!textToSend) setInputQuery('');
     setIsAnalyzing(true);
 
-    // AI Intelligence Response Simulation
-    setTimeout(() => {
-      const qLower = query.toLowerCase();
-      let replyText = '';
-      let category: string | undefined;
-      let priority: string | undefined;
-      let assignedTo: string | undefined;
-      let suggestedAction: { label: string; route: string } | undefined;
+    const qLower = query.toLowerCase();
+    let replyText = '';
+    let category: string | undefined;
+    let priority: string | undefined;
+    let assignedTo: string | undefined;
+    let suggestedAction: { label: string; route: string } | undefined;
+    let matchedKnownCategory = true;
 
-      if (qLower.includes('plumb') || qLower.includes('water') || qLower.includes('tap') || qLower.includes('leak') || qLower.includes('drain') || qLower.includes('flush')) {
-        category = 'Plumbing Maintenance';
-        priority = qLower.includes('heavy') || qLower.includes('overflow') ? 'Critical' : 'High';
-        assignedTo = 'M. Selvam (Senior Plumber)';
-        replyText = `I have categorized this as **${category}** (${priority} Priority). Vaigai AI will automatically route this ticket to **${assignedTo}**. Expected response turnaround is under **2 hours**.`;
-        suggestedAction = { label: 'Log Plumbing Ticket', route: '/resident/dashboard' };
-      } 
-      else if (qLower.includes('fan') || qLower.includes('light') || qLower.includes('spark') || qLower.includes('electric') || qLower.includes('plug') || qLower.includes('power') || qLower.includes('switch')) {
-        category = 'Electrical Services';
-        priority = qLower.includes('spark') || qLower.includes('fire') ? 'Critical' : 'High';
-        assignedTo = 'S. Kumar (Duty Electrician)';
-        replyText = `This has been analyzed as an **${category}** issue (${priority} Priority). Vaigai AI will assign it to **${assignedTo}**. Please do not tamper with live wires or faulty sockets.`;
-        suggestedAction = { label: 'Submit Electrical Complaint', route: '/resident/dashboard' };
-      }
-      else if (qLower.includes('curfew') || qLower.includes('timing') || qLower.includes('late') || qLower.includes('time') || qLower.includes('entry')) {
-        replyText = `**Hostel Gate Timings & Curfew Rules:**\n• **In-Time for Residents:** 09:30 PM (Mon - Sun)\n• **Late Pass Requirement:** Late entry after 09:30 PM requires a warden-approved digital pass.\n• **Security Gate A:** Suresh Kumar will verify your QR pass at entry.`;
-        suggestedAction = { label: 'Request Outpass', route: '/resident/outpass' };
-      }
-      else if (qLower.includes('mess') || qLower.includes('food') || qLower.includes('rebate') || qLower.includes('meal') || qLower.includes('lunch') || qLower.includes('dinner')) {
-        replyText = `**Mess Rebate & Dining Policy:**\n• **Rebate Eligibility:** Apply at least **24 hours prior** for a minimum of 3 consecutive absent days.\n• **Special Menu:** Special meals are served on Wednesdays & Sundays.\n• **Feedback:** You can post mess appreciation or suggestions on **Hostel Circle**.`;
-        suggestedAction = { label: 'View Community Feed', route: '/resident/circle' };
-      }
-      else if (qLower.includes('visitor') || qLower.includes('parent') || qLower.includes('guest') || qLower.includes('pass')) {
-        replyText = `**Digital Visitor Pass Process:**\n1. Generate a pass request under the **Passes** tab.\n2. Chief Warden Dr. Priya Raman receives an instant notification for approval.\n3. Show the approved QR pass at Gate A for instant Security check-in.`;
-        suggestedAction = { label: 'Generate Visitor Pass', route: '/resident/passes' };
-      }
-      else if (qLower.includes('sos') || qLower.includes('emergency') || qLower.includes('medical') || qLower.includes('danger') || qLower.includes('doctor')) {
-        replyText = `🚨 **EMERGENCY ASSISTANCE TRIGGERED**\n• **Chief Warden Hotline:** +91 98401 23456 (Dr. Priya Raman)\n• **Campus Medical Center:** Block C First Aid Room\n• Click below to trigger immediate siren distress signal to security.`;
-        suggestedAction = { label: 'Trigger Emergency SOS', route: '/resident/sos' };
-      }
-      else if (qLower.includes('username') || qLower.includes('circle') || qLower.includes('post') || qLower.includes('anonymous')) {
-        replyText = `**Hostel Circle & Username Generator:**\n• You can generate custom anonymous handles using our 3-tier word generator (Prefix + Separator + Middle + Suffix).\n• Usernames can be changed once every 30 days.`;
-        suggestedAction = { label: 'Manage Community Username', route: '/resident/settings' };
-      }
-      else {
-        replyText = `I have received your query: "${query}". Project Vaigai AI is continuously learning campus workflows. I recommend logging a ticket or checking with Dr. Priya Raman (Warden Office, Vaigai Block A).`;
+    // Deterministic routing for known categories — these carry real staff
+    // names, phone numbers, and policy details, so they stay hard-coded
+    // rather than left to the AI to (potentially) hallucinate.
+    if (qLower.includes('plumb') || qLower.includes('water') || qLower.includes('tap') || qLower.includes('leak') || qLower.includes('drain') || qLower.includes('flush')) {
+      category = 'Plumbing Maintenance';
+      priority = qLower.includes('heavy') || qLower.includes('overflow') ? 'Critical' : 'High';
+      assignedTo = 'M. Selvam (Senior Plumber)';
+      replyText = `I have categorized this as **${category}** (${priority} Priority). Vaigai AI will automatically route this ticket to **${assignedTo}**. Expected response turnaround is under **2 hours**.`;
+      suggestedAction = { label: 'Log Plumbing Ticket', route: '/resident/dashboard' };
+    }
+    else if (qLower.includes('fan') || qLower.includes('light') || qLower.includes('spark') || qLower.includes('electric') || qLower.includes('plug') || qLower.includes('power') || qLower.includes('switch')) {
+      category = 'Electrical Services';
+      priority = qLower.includes('spark') || qLower.includes('fire') ? 'Critical' : 'High';
+      assignedTo = 'S. Kumar (Duty Electrician)';
+      replyText = `This has been analyzed as an **${category}** issue (${priority} Priority). Vaigai AI will assign it to **${assignedTo}**. Please do not tamper with live wires or faulty sockets.`;
+      suggestedAction = { label: 'Submit Electrical Complaint', route: '/resident/dashboard' };
+    }
+    else if (qLower.includes('curfew') || qLower.includes('timing') || qLower.includes('late') || qLower.includes('time') || qLower.includes('entry')) {
+      replyText = `**Hostel Gate Timings & Curfew Rules:**\n• **In-Time for Residents:** 09:30 PM (Mon - Sun)\n• **Late Pass Requirement:** Late entry after 09:30 PM requires a warden-approved digital pass.\n• **Security Gate A:** Suresh Kumar will verify your QR pass at entry.`;
+      suggestedAction = { label: 'Request Outpass', route: '/resident/outpass' };
+    }
+    else if (qLower.includes('mess') || qLower.includes('food') || qLower.includes('rebate') || qLower.includes('meal') || qLower.includes('lunch') || qLower.includes('dinner')) {
+      replyText = `**Mess Rebate & Dining Policy:**\n• **Rebate Eligibility:** Apply at least **24 hours prior** for a minimum of 3 consecutive absent days.\n• **Special Menu:** Special meals are served on Wednesdays & Sundays.\n• **Feedback:** You can post mess appreciation or suggestions on **Hostel Circle**.`;
+      suggestedAction = { label: 'View Community Feed', route: '/resident/circle' };
+    }
+    else if (qLower.includes('visitor') || qLower.includes('parent') || qLower.includes('guest') || qLower.includes('pass')) {
+      replyText = `**Digital Visitor Pass Process:**\n1. Generate a pass request under the **Passes** tab.\n2. Chief Warden Dr. Priya Raman receives an instant notification for approval.\n3. Show the approved QR pass at Gate A for instant Security check-in.`;
+      suggestedAction = { label: 'Generate Visitor Pass', route: '/resident/passes' };
+    }
+    else if (qLower.includes('sos') || qLower.includes('emergency') || qLower.includes('medical') || qLower.includes('danger') || qLower.includes('doctor')) {
+      replyText = `🚨 **EMERGENCY ASSISTANCE TRIGGERED**\n• **Chief Warden Hotline:** +91 98401 23456 (Dr. Priya Raman)\n• **Campus Medical Center:** Block C First Aid Room\n• Click below to trigger immediate siren distress signal to security.`;
+      suggestedAction = { label: 'Trigger Emergency SOS', route: '/resident/sos' };
+    }
+    else if (qLower.includes('username') || qLower.includes('circle') || qLower.includes('post') || qLower.includes('anonymous')) {
+      replyText = `**Hostel Circle & Username Generator:**\n• You can generate custom anonymous handles using our 3-tier word generator (Prefix + Separator + Middle + Suffix).\n• Usernames can be changed once every 30 days.`;
+      suggestedAction = { label: 'Manage Community Username', route: '/resident/settings' };
+    }
+    else {
+      matchedKnownCategory = false;
+    }
+
+    // Anything that doesn't match a known category goes to the real AI
+    // instead of a canned "I recommend logging a ticket" line.
+    if (!matchedKnownCategory) {
+      try {
+        replyText = await askVaigaiAI(query, userRole);
         suggestedAction = { label: 'Open Main Dashboard', route: '/resident/dashboard' };
+      } catch (error) {
+        console.error(error);
+        replyText = "⚠️ Sorry, I couldn't reach the AI service right now. Please try again, or log a ticket from the dashboard.";
       }
+    }
 
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: replyText,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        category,
-        priority,
-        assignedTo,
-        suggestedAction
-      };
+    const aiMsg: ChatMessage = {
+      id: `ai-${Date.now()}`,
+      sender: 'ai',
+      text: replyText,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      category,
+      priority,
+      assignedTo,
+      suggestedAction
+    };
 
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsAnalyzing(false);
-    }, 800);
+    setMessages((prev) => [...prev, aiMsg]);
+    setIsAnalyzing(false);
   };
 
   const handleResetChat = () => {
-    setMessages([
-      {
-        id: 'welcome-1',
-        sender: 'ai',
-        text: `Hello! I am **Vaigai AI**, your intelligent campus assistant. Ask me anything about complaint routing, hostel curfew, mess rebates, or visitor passes!`,
-        time: 'Just now'
-      }
-    ]);
+    setMessages([WELCOME_MESSAGE]);
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
       <div className="bg-white rounded-[28px] border border-[#E7E4DF] shadow-2xl max-w-xl w-full h-[620px] flex flex-col overflow-hidden animate-slideUp relative">
-        
+
         {/* Top Header Banner */}
         <div className="p-4 sm:p-5 bg-gradient-to-r from-[#2A5C8A] via-[#A73FD3] to-[#996E7D] text-white flex items-center justify-between shrink-0 shadow-md">
           <div className="flex items-center gap-3">
@@ -167,7 +184,7 @@ export const VaigaiAiHelperModal: React.FC<VaigaiAiHelperModalProps> = ({
                   Vaigai AI Helper
                 </h3>
                 <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-extrabold uppercase tracking-widest text-white border border-white/20">
-                  Gemini Powered
+                  AI Powered
                 </span>
               </div>
               <p className="font-body text-xs text-purple-100 font-medium mt-0.5">
@@ -268,7 +285,7 @@ export const VaigaiAiHelperModal: React.FC<VaigaiAiHelperModalProps> = ({
                 }`}
               >
                 <p className="whitespace-pre-line leading-relaxed">
-                  {msg.text}
+                  {renderFormattedText(msg.text)}
                 </p>
 
                 {/* AI Classification Card if present */}

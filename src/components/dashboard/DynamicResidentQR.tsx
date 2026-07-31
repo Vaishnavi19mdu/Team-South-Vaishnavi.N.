@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   QrCode, ShieldCheck, RefreshCw, Clock, ArrowRightLeft, CheckCircle2, 
   AlertCircle, Download, Smartphone, Lock, Sparkles, Check, ChevronRight
@@ -25,25 +25,15 @@ export const DynamicResidentQR: React.FC<DynamicResidentQRProps> = ({
 
   const [passMode, setPassMode] = useState<'entry' | 'exit'>('entry');
   const [campusStatus, setCampusStatus] = useState<'inside' | 'outside'>('inside');
-  const [timer, setTimer] = useState(30);
   const [isScanning, setIsScanning] = useState(false);
   const [tokenHash, setTokenHash] = useState('PV-GATE-8910-AX92');
+  const [lastRefreshedTime, setLastRefreshedTime] = useState<string | null>(null);
   const [lastScannedTime, setLastScannedTime] = useState<string | null>('Today, 08:30 AM');
 
-  // Rotate QR code token every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimer((prev) => {
-        if (prev <= 1) {
-          generateNewHash();
-          return 30;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
+  // No auto-refresh: the QR is a static gate pass. It only changes when the
+  // resident explicitly taps "Refresh Now" (e.g. if they think it's been
+  // shared/screenshotted) or after a successful gate scan. A code that
+  // rotates on its own every 20-30s just expires before anyone can use it.
   const generateNewHash = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let randStr = '';
@@ -56,10 +46,11 @@ export const DynamicResidentQR: React.FC<DynamicResidentQRProps> = ({
 
   const handleManualRefresh = () => {
     generateNewHash();
-    setTimer(30);
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setLastRefreshedTime(now);
     showToast({
       title: 'Security Token Refreshed',
-      message: 'Generated a new dynamic anti-spoofing QR code hash.',
+      message: 'Generated a new gate pass code. Your old QR is no longer valid.',
       type: 'info',
     });
   };
@@ -76,6 +67,10 @@ export const DynamicResidentQR: React.FC<DynamicResidentQRProps> = ({
       setIsScanning(false);
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setLastScannedTime(`Today, ${now}`);
+
+      // A pass is single-use: once the gate scans it, issue a fresh code so
+      // the same QR image can't be reused for a second entry/exit.
+      generateNewHash();
 
       if (passMode === 'exit') {
         setCampusStatus('outside');
@@ -95,7 +90,9 @@ export const DynamicResidentQR: React.FC<DynamicResidentQRProps> = ({
     }, 1800);
   };
 
-  // Helper to draw a procedural SVG QR Code pattern based on tokenHash
+  // Helper to draw a procedural SVG QR Code pattern based on tokenHash.
+  // Pattern is derived purely from the hash string now (no timer input),
+  // so it stays visually stable until the hash itself actually changes.
   const renderSvgQrPattern = (hash: string) => {
     // Generate a 15x15 grid of modules based on hash char codes
     const size = 15;
@@ -124,7 +121,7 @@ export const DynamicResidentQR: React.FC<DynamicResidentQRProps> = ({
         } else {
           // Pseudo-random modules driven by hash string
           const charCode = hash.charCodeAt(hashIdx % hash.length);
-          modules[r][c] = (r * 7 + c * 13 + charCode + timer) % 3 !== 0;
+          modules[r][c] = (r * 7 + c * 13 + charCode) % 3 !== 0;
           hashIdx++;
         }
       }
@@ -170,12 +167,12 @@ export const DynamicResidentQR: React.FC<DynamicResidentQRProps> = ({
               <QrCode className="w-5 h-5" />
             </span>
             <h2 className="font-heading text-lg font-extrabold text-[#1A1A1A]">
-              Dynamic Gate Pass QR
+              Gate Pass QR
             </h2>
-            <Badge variant="primary" size="sm">Anti-Spoof TOTP</Badge>
+            <Badge variant="primary" size="sm">Single-Use Security Code</Badge>
           </div>
           <p className="font-body text-xs text-[#666666]">
-            Present this dynamic digital pass at hostel gates for instant contactless entry & exit logging.
+            Show this pass at the hostel gate for contactless entry & exit logging. It stays valid until scanned.
           </p>
         </div>
 
@@ -246,28 +243,21 @@ export const DynamicResidentQR: React.FC<DynamicResidentQRProps> = ({
             )}
           </div>
 
-          {/* Dynamic Token Refresh Timer Bar */}
+          {/* Static status line + manual refresh (no countdown, no auto-expiry) */}
           <div className="w-56 mt-3 flex items-center justify-between text-[11px] font-bold text-[#666666]">
             <span className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-[#996E7D]" />
-              Refreshes in {timer}s
+              <Lock className="w-3.5 h-3.5 text-[#996E7D]" />
+              {lastRefreshedTime ? `Refreshed at ${lastRefreshedTime}` : 'Valid until scanned'}
             </span>
 
             <button
               type="button"
               onClick={handleManualRefresh}
               className="text-[#2A5C8A] hover:underline flex items-center gap-1 cursor-pointer"
+              title="Generate a new code if you think this one has been shared or screenshotted"
             >
               <RefreshCw className="w-3 h-3" /> Refresh Now
             </button>
-          </div>
-
-          {/* Progress bar line */}
-          <div className="w-56 h-1 bg-[#E7E4DF] rounded-full mt-1.5 overflow-hidden">
-            <div
-              className="h-full bg-[#996E7D] transition-all duration-1000 ease-linear"
-              style={{ width: `${(timer / 30) * 100}%` }}
-            />
           </div>
         </div>
 
