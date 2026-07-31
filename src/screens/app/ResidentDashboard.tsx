@@ -679,6 +679,7 @@ export const ResidentDashboard: React.FC<ResidentDashboardProps> = ({
 
               {/* Dynamic Resident Gate Pass QR Code */}
               <DynamicResidentQR
+              residentUid={firebaseUser?.uid}
                 residentName={profile.name}
                 rollNumber={profile.rollNo}
                 roomNumber={profile.room}

@@ -28,6 +28,24 @@ type AppRoute =
   | 'landing' | 'login' | 'role-selection' | 'signup-step-1' | 'signup-step-2' | 'pending-approval'
   | 'resident-dashboard' | 'warden-dashboard' | 'maintenance-dashboard' | 'security-dashboard' | 'superadmin-dashboard';
 
+// Single source of truth for "which dashboard route does this role land on".
+// Used both right after signup (when a role doesn't require approval) and
+// on every login, so the two flows can never drift apart again.
+function dashboardRouteForRole(role: UserRole | string): AppRoute {
+  switch (role) {
+    case 'superadmin':
+      return 'superadmin-dashboard';
+    case 'warden':
+      return 'warden-dashboard';
+    case 'maintenance':
+      return 'maintenance-dashboard';
+    case 'security':
+      return 'security-dashboard';
+    default:
+      return 'resident-dashboard';
+  }
+}
+
 function AppContent() {
   const [activeRoute, setActiveRoute] = useState<AppRoute>('landing');
 
@@ -69,7 +87,11 @@ function AppContent() {
       if (newProfile.status === 'pending') {
         setActiveRoute('pending-approval');
       } else {
-        setActiveRoute('resident-dashboard');
+        // Was previously hardcoded to 'resident-dashboard', which silently
+        // sent any non-pending non-resident signup (or any role whose
+        // approval requirement changes later) to the wrong dashboard.
+        // Route by the role actually returned on the created profile.
+        setActiveRoute(dashboardRouteForRole(newProfile.role ?? role));
       }
     } catch (err) {
       console.error('Signup failed:', err);
@@ -87,22 +109,7 @@ function AppContent() {
       return;
     }
 
-    switch (profile.role) {
-      case 'superadmin':
-        setActiveRoute('superadmin-dashboard');
-        break;
-      case 'warden':
-        setActiveRoute('warden-dashboard');
-        break;
-      case 'maintenance':
-        setActiveRoute('maintenance-dashboard');
-        break;
-      case 'security':
-        setActiveRoute('security-dashboard');
-        break;
-      default:
-        setActiveRoute('resident-dashboard');
-    }
+    setActiveRoute(dashboardRouteForRole(profile.role));
   };
 
   const handleLogout = async () => {
