@@ -35,7 +35,9 @@ export const ROLES: Record<UserRole, RoleConfig> = {
     subtitle: 'Electrician, Plumber, Carpenter, Technician',
     description: 'Receive real-time work orders, update repair statuses, and manage equipment inventory.',
     iconName: 'Wrench',
-    requiresApproval: true,
+    // Lower-privilege role (no SOS/gate/complaint-approval authority), so it
+    // auto-activates like residents instead of waiting on Super Admin sign-off.
+    requiresApproval: false,
     accentColor: '#D97706',
   },
   security: {

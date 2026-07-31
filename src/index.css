@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #FAF8F2;
+    color: #1A1A1A;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+.font-heading {
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+}
+
+.font-body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Custom subtle scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #E7E4DF;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #996E7D;
+}
+
+@keyframes floatPass {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes floatChip1 {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  50% { transform: translateY(-6px) translateX(3px); }
+}
+
+@keyframes floatChip2 {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  50% { transform: translateY(6px) translateX(-3px); }
+}
+
+@keyframes scanShimmer {
+  0% { top: 5%; opacity: 0; }
+  20% { opacity: 0.9; }
+  80% { opacity: 0.9; }
+  100% { top: 90%; opacity: 0; }
+}
+
+.animate-float-pass {
+  animation: floatPass 6s ease-in-out infinite;
+}
+
+.animate-float-chip1 {
+  animation: floatChip1 5s ease-in-out infinite;
+}
+
+.animate-float-chip2 {
+  animation: floatChip2 7s ease-in-out infinite 1.2s;
+}
+
+.animate-scan-shimmer {
+  animation: scanShimmer 3.2s ease-in-out infinite;
+}

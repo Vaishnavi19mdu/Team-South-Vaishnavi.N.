@@ -1,0 +1,6 @@
+{
+  "name": "Project Vaigai",
+  "description": "Smart Hostel Management Platform for Safer Student Living",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

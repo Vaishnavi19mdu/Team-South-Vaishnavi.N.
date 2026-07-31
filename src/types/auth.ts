@@ -19,15 +19,37 @@ export interface UserProfile {
   gender: string;
   role: ProfileRole;
 
-  // Hostel / admin fields (from SignupHostelScreen)
-  hostelBlock: string;
-  floorNumber: string;
-  roomNumber: string;
+  // ==================== Resident-only ====================
+  // Populated only when role === 'resident'. Do not read these for staff
+  // roles — they simply won't be set.
+  hostelBlock?: string;
+  floorNumber?: string;
+  roomNumber?: string;
+
+  // ==================== Warden-only ====================
+  assignedBlock?: string;   // primary block they administer
+  officeLocation?: string; // cabin / office code, not a dorm room
+
+  // ==================== Maintenance-only ====================
+  department?: 'Electrical' | 'Plumbing' | 'Carpentry' | 'General' | 'Housekeeping';
+  assignedZone?: string;    // a hostel block slug, or 'all' for campus-wide
+  shift?: 'Morning' | 'Evening' | 'On-call';
+
+  // ==================== Security-only ====================
+  assignedGate?: string;
+  badgeNumber?: string;
+  // note: security also uses `shift`, but with different values —
+  // see SecurityShift below and how SignupHostelScreen assigns it.
+
+  // ==================== Shared across warden / maintenance / security ====================
+  employeeId?: string;
+
+  // ==================== Common to every role ====================
   emergencyName: string;
   emergencyNumber: string;
 
   // Approval workflow
-  status: ApprovalStatus;   // 'approved' immediately for residents
+  status: ApprovalStatus;   // 'approved' immediately for resident & maintenance
   isAdmin: boolean;         // true only for superadmin accounts (seeded manually)
 
   createdAt: string;        // ISO timestamp
